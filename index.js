@@ -1,6 +1,7 @@
 // requires the mongodb node.js driver and imported the MongoClient object from it
 const MongoClient = require('mongodb').MongoClient;
 const assert = require('assert').strict;
+const dboper = require('./operations');
 
 // sets up a connection to the mongodb server using the port number
 const url = 'mongodb://localhost:27017/';
@@ -27,26 +28,34 @@ MongoClient.connect(url, { useUnifiedTopology: true }, (err, client) => {
         // logs if collection was successfully dropped. Result should be true
         console.log('Dropped Collection', result);
 
-        // recreate the campsites collection
-        const collection = db.collection('campsites');
-
         // insert document in the collection
-        collection.insertOne({name: "Breadcrumb Trail Campground", description: "Test"}, (err, result) => {
-            assert.strictEqual(err, null);
-            
+        dboper.insertOne(db, {name: "Breadcrumb Trail Campground", description: "Test"}, 'campsites', result => {
             // ops will contain an array of the inserted document
             console.log('Insert Document:', result.ops);
 
-            // log all documents in the collection. toArray() converts documents to an array of objects
-            collection.find().toArray((err, docs) => {
-                assert.strictEqual(err, null);
-                console.log('Found Document:', docs);
+            // the findDocuments method from operations.js
+            dboper.findDocuments(db, 'campsites', docs => {
+                console.log('Found Documents:', docs);
 
-                // close client's connection to mongodb server
-                client.close();
+                // the updateDocument method from operations.js
+                dboper.updateDocument(db, { name: "Breadcrumb Trail Campground" }, { description: "Updated Test Description" }, 'campsites', result => {
+
+                    // logs how many documents were updated, which should be 1
+                    console.log('Updated Document Count:', result.result.nModified);
+
+                    // logs all documents in the collection to confirm updateDocument was successful
+                    dboper.findDocuments(db, 'campsites', docs => {
+                        console.log('Found Documents:', docs);
+
+                        dboper.removeDocument(db, { name: "Breadcrumb Trail Campground" }, 'campsites', result => {
+                            console.log('Deleted Document Count:', result.deletedCount);
+
+                            // close client's connection to mongodb server
+                            client.close();
+                        });
+                    });
+                });
             });
         });
-
     });
-
 });
